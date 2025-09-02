@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kibana-setup
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: setup
+        image: curlimages/curl:8.4.0
+        command: ["/bin/sh", "/scripts/setup-dashboards.sh"]
+        volumeMounts:
+        - name: setup-scripts
+          mountPath: /scripts
+      volumes:
+      - name: setup-scripts
+        configMap:
+          name: kibana-dashboards
+          defaultMode: 0755

@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-ilm-policy
+  namespace: default
+data:
+  setup-ilm.sh: |
+    #!/bin/bash
+    # Wait for Elasticsearch to be ready
+    until curl -s http://elasticsearch:9200/_cluster/health | grep -q '"status":"green"'; do
+      echo "Waiting for Elasticsearch..."
+      sleep 5
+    done
+    
+    # Create ILM policy for hellogithubactions logs
+    curl -X PUT "http://elasticsearch:9200/_ilm/policy/hellogithubactions-policy" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "policy": {
+        "phases": {
+          "hot": {
+            "actions": {
+              "rollover": {
+                "max_size": "1GB",
+                "max_age": "1d"
+              },
+              "set_priority": {
+                "priority": 100
+              }
+            }
+          },
+          "warm": {
+            "min_age": "7d",
+            "actions": {
+              "set_priority": {
+                "priority": 50
+              },
+              "allocate": {
+                "number_of_replicas": 0
+              }
+            }
+          },
+          "delete": {
+            "min_age": "30d",
+            "actions": {
+              "delete": {}
+            }
+          }
+        }
+      }
+    }'
+    
+    # Create index template for hellogithubactions
+    curl -X PUT "http://elasticsearch:9200/_index_template/hellogithubactions-template" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "index_patterns": ["hellogithubactions-*"],
+      "template": {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1,
+          "refresh_interval": "5s",
+          "codec": "best_compression",
+          "index.lifecycle.name": "hellogithubactions-policy",
+          "index.lifecycle.rollover_alias": "hellogithubactions"
+        },
+        "mappings": {
+          "properties": {
+            "@timestamp": {
+              "type": "date"
+            },
+            "level": {
+              "type": "keyword"
+            },
+            "logger": {
+              "type": "keyword"
+            },
+            "message": {
+              "type": "text",
+              "analyzer": "standard"
+            },
+            "thread": {
+              "type": "keyword"
+            },
+            "kubernetes": {
+              "properties": {
+                "pod": {
+                  "type": "keyword"
+                },
+                "namespace": {
+                  "type": "keyword"
+                },
+                "container": {
+                  "type": "keyword"
+                },
+                "labels": {
+                  "type": "object"
+                }
+              }
+            },
+            "mdc": {
+              "properties": {
+                "correlationId": {
+                  "type": "keyword"
+                },
+                "userId": {
+                  "type": "keyword"
+                },
+                "method": {
+                  "type": "keyword"
+                },
+                "uri": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                },
+                "responseTime": {
+                  "type": "long"
+                },
+                "userAgent": {
+                  "type": "keyword"
+                },
+                "remoteAddr": {
+                  "type": "ip"
+                }
+              }
+            },
+            "service": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "type": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "application": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "environment": {
+              "type": "keyword"
+            }
+          }
+        }
+      },
+      "priority": 200,
+      "version": 1
+    }'
+    
+    # Create initial index with alias
+    curl -X PUT "http://elasticsearch:9200/hellogithubactions-000001" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "aliases": {
+        "hellogithubactions": {
+          "is_write_index": true
+        }
+      }
+    }'
+    
+    echo "ILM policy and index template created successfully"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-setup
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: setup
+        image: curlimages/curl:8.4.0
+        command: ["/bin/sh", "/scripts/setup-ilm.sh"]
+        volumeMounts:
+        - name: setup-scripts
+          mountPath: /scripts
+      volumes:
+      - name: setup-scripts
+        configMap:
+          name: elasticsearch-ilm-policy
+          defaultMode: 0755

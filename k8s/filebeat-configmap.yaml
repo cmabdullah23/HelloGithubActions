@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: default
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/containers/*.log
+      # Java exception multiline pattern handling
+      multiline.pattern: '^[[:space:]]*(\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2}\s)'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 500
+      multiline.timeout: 5s
+      
+      processors:
+        # Add Kubernetes metadata
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+            default_indexers.enabled: false
+            default_matchers.enabled: false
+            indexers:
+              - container:
+            matchers:
+              - logs_path:
+                  logs_path: "/var/log/containers/"
+        
+        # Drop health check noise
+        - drop_event:
+            when:
+              contains:
+                kubernetes.container.name: "filebeat"
+        - drop_event:
+            when:
+              contains:
+                message: "/health"
+        - drop_event:
+            when:
+              contains:
+                message: "/actuator/health"
+        - drop_event:
+            when:
+              contains:
+                log.file.path: "/var/log/containers/kube-system_"
+        
+        # Decode JSON fields from structured logging
+        - decode_json_fields:
+            fields: ["message"]
+            target: ""
+            overwrite_keys: true
+            add_error_key: true
+            when:
+              contains:
+                message: "{"
+
+    processors:
+    - add_host_metadata:
+        when.not.contains.tags: forwarded
+    - add_docker_metadata: ~
+    - add_kubernetes_metadata:
+        host: ${NODE_NAME}
+        matchers:
+        - logs_path:
+            logs_path: "/var/log/containers/"
+    
+    # Additional processing for HelloGithubActions specific logs
+    - script:
+        lang: javascript
+        id: hellogithubactions_processor
+        source: >
+          function process(event) {
+            var log = event.Get("log");
+            if (log && log.file && log.file.path && 
+                log.file.path.includes("hellogithubactions")) {
+              event.Put("service.name", "HelloGithubActions");
+              event.Put("service.type", "spring-boot");
+            }
+          }
+    
+    # Rename fields for better organization
+    - rename:
+        fields:
+          - from: "kubernetes.pod.name"
+            to: "kubernetes.pod"
+          - from: "kubernetes.namespace_name"  
+            to: "kubernetes.namespace"
+          - from: "kubernetes.container.name"
+            to: "kubernetes.container"
+
+    output.elasticsearch:
+      hosts: ['elasticsearch:9200']
+      protocol: "http"
+      username: ""
+      password: ""
+      
+      # Index configuration - use alias for ILM
+      index: "hellogithubactions"
+      
+      # Connection settings for better performance
+      worker: 1
+      bulk_max_size: 50
+      flush_interval: 1s
+      backoff.init: 1s
+      backoff.max: 60s
+      max_retries: 3
+      timeout: 90s
+      
+      # Headers for better debugging
+      headers:
+        X-Filebeat-Source: "kubernetes"
+      
+      # Health check
+      check_exists: false
+
+    # Template and ILM setup - let the setup job handle this
+    setup.template.enabled: false
+    setup.ilm.enabled: false
+
+    logging.level: info
+    logging.to_files: false
+    logging.to_syslog: false
+    logging.metrics.enabled: true

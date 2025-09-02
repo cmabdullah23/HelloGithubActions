@@ -1,0 +1,114 @@
+{
+  "mappings": {
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "level": {
+        "type": "keyword"
+      },
+      "logger": {
+        "type": "keyword"
+      },
+      "message": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "thread": {
+        "type": "keyword"
+      },
+      "kubernetes": {
+        "properties": {
+          "pod": {
+            "type": "keyword"
+          },
+          "namespace": {
+            "type": "keyword"
+          },
+          "container": {
+            "type": "keyword"
+          },
+          "labels": {
+            "type": "object",
+            "enabled": true
+          },
+          "node": {
+            "properties": {
+              "name": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "mdc": {
+        "properties": {
+          "correlationId": {
+            "type": "keyword"
+          },
+          "userId": {
+            "type": "keyword"
+          },
+          "method": {
+            "type": "keyword"
+          },
+          "uri": {
+            "type": "keyword"
+          },
+          "status": {
+            "type": "keyword"
+          },
+          "responseTime": {
+            "type": "long"
+          },
+          "userAgent": {
+            "type": "keyword"
+          },
+          "remoteAddr": {
+            "type": "ip"
+          },
+          "event": {
+            "type": "keyword"
+          }
+        }
+      },
+      "service": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          }
+        }
+      },
+      "application": {
+        "type": "keyword"
+      },
+      "version": {
+        "type": "keyword"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "host": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "log": {
+        "properties": {
+          "file": {
+            "properties": {
+              "path": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

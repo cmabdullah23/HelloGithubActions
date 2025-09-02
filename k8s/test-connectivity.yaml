@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connectivity-test
+  namespace: default
+data:
+  test-filebeat-es.sh: |
+    #!/bin/bash
+    echo "🔍 Testing Filebeat -> Elasticsearch connectivity..."
+    
+    # Test Elasticsearch directly
+    echo "Testing Elasticsearch health..."
+    curl -f http://elasticsearch:9200/_cluster/health || {
+        echo "❌ Cannot reach Elasticsearch"
+        exit 1
+    }
+    
+    # Test index creation
+    echo "Testing index creation..."
+    curl -X POST "http://elasticsearch:9200/test-index/_doc" \
+         -H "Content-Type: application/json" \
+         -d '{
+           "@timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+           "level": "INFO",
+           "logger": "connectivity-test",
+           "message": "Test message from connectivity test",
+           "thread": "test-thread",
+           "service": {
+             "name": "HelloGithubActions",
+             "type": "spring-boot"
+           }
+         }' || {
+        echo "❌ Cannot create test document"
+        exit 1
+    }
+    
+    # Wait and check if document was indexed
+    sleep 2
+    
+    echo "Checking if test document was indexed..."
+    curl -s "http://elasticsearch:9200/test-index/_search?q=connectivity-test" | grep -q "connectivity-test" && {
+        echo "✅ Test document found - connectivity is working"
+        
+        # Clean up test index
+        curl -X DELETE "http://elasticsearch:9200/test-index" > /dev/null 2>&1
+        echo "🧹 Cleaned up test index"
+    } || {
+        echo "❌ Test document not found - there may be an issue"
+        exit 1
+    }
+    
+    echo "✅ Filebeat -> Elasticsearch connectivity test passed"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: connectivity-test
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test
+        image: curlimages/curl:8.4.0
+        command: ["/bin/sh", "/scripts/test-filebeat-es.sh"]
+        volumeMounts:
+        - name: test-scripts
+          mountPath: /scripts
+      volumes:
+      - name: test-scripts
+        configMap:
+          name: connectivity-test
+          defaultMode: 0755

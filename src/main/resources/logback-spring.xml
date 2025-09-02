@@ -1,23 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    
-    <!-- Define properties -->
-    <springProfile name="!prod">
-        <property name="LOG_LEVEL" value="INFO"/>
-    </springProfile>
-    <springProfile name="prod">
-        <property name="LOG_LEVEL" value="WARN"/>
-    </springProfile>
-    
-    <!-- Console appender for development -->
+
+    <!-- Console appender for development with structured JSON logging -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
             <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</pattern>
+                </timestamp>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <mdc>
+                    <fieldName>mdc</fieldName>
+                </mdc>
                 <arguments/>
                 <stackTrace/>
                 <pattern>
@@ -32,73 +35,19 @@
                 </pattern>
             </providers>
         </encoder>
-    </appender>
-
-    <!-- File appender for production -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/var/log/hellogithubactions/application.log</file>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <pattern>
-                    <pattern>
-                        {
-                            "thread": "%thread",
-                            "application": "HelloGithubActions",
-                            "version": "${APPLICATION_VERSION:-unknown}",
-                            "environment": "${SPRING_PROFILES_ACTIVE:-default}"
-                        }
-                    </pattern>
-                </pattern>
-            </providers>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/var/log/hellogithubactions/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>10GB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
-
-    <!-- Async appender for better performance -->
-    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="CONSOLE"/>
-        <queueSize>512</queueSize>
-        <discardingThreshold>0</discardingThreshold>
-        <includeCallerData>false</includeCallerData>
     </appender>
 
     <!-- Root logger -->
-    <root level="${LOG_LEVEL}">
-        <springProfile name="!prod">
-            <appender-ref ref="ASYNC"/>
-        </springProfile>
-        <springProfile name="prod">
-            <appender-ref ref="FILE"/>
-        </springProfile>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
     </root>
 
     <!-- Application specific loggers -->
-    <logger name="com.cm.hellogithubactions" level="INFO" additivity="false">
-        <springProfile name="!prod">
-            <appender-ref ref="ASYNC"/>
-        </springProfile>
-        <springProfile name="prod">
-            <appender-ref ref="FILE"/>
-        </springProfile>
-    </logger>
-
-    <!-- Spring Boot loggers -->
-    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="com.cm.hellogithubactions" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
     <logger name="org.springframework.security" level="INFO"/>
     <logger name="org.springframework.boot.actuate" level="INFO"/>
-    
+
     <!-- Reduce noise from common frameworks -->
     <logger name="org.apache.catalina.startup.DigesterFactory" level="ERROR"/>
     <logger name="org.apache.catalina.util.LifecycleBase" level="ERROR"/>
@@ -106,5 +55,5 @@
     <logger name="org.apache.sshd.common.util.SecurityUtils" level="WARN"/>
     <logger name="org.eclipse.jetty.util.component.AbstractLifeCycle" level="ERROR"/>
     <logger name="org.hibernate.validator.internal.util.Version" level="WARN"/>
-    
+
 </configuration>
