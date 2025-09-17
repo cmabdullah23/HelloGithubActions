@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: HelloGithubActions
+
+  output:
+    ansi:
+      enabled: ALWAYS
+server:
+  port: 8091
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,loggers,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+    loggers:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+    git:
+      enabled: true
+
+# Application Info
+info:
+  app:
+    name: HelloGithubActions
+    description: Spring Boot application with ELK logging
+    version: "@project.version@"
+
+# Logging Configuration
+logging:
+  level:
+    # Root level
+    root: INFO
+    
+    # Application specific packages
+    com.cm.hellogithubactions: INFO
+    com.cm.hellogithubactions.controller: DEBUG
+    com.cm.hellogithubactions.service: INFO
+    com.cm.hellogithubactions.config: DEBUG
+    
+    # Spring Framework packages
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.boot.actuate: INFO
+    org.springframework.data: INFO
+    
+    # Third-party libraries
+    org.apache.catalina.startup.DigesterFactory: ERROR
+    org.apache.catalina.util.LifecycleBase: ERROR
+    org.apache.coyote.http11.Http11NioProtocol: WARN
+    org.apache.sshd.common.util.SecurityUtils: WARN
+    org.eclipse.jetty.util.component.AbstractLifeCycle: ERROR
+    org.hibernate.validator.internal.util.Version: WARN
+    
+  pattern:
+    # Console pattern (can be overridden by logback-spring.xml)
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%X{correlationId:-}] - %msg%n"
+    # File pattern (can be overridden by logback-spring.xml)
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId:-}] - %msg%n"
+    
+  # Correlation ID configuration
+  correlation:
+    pattern: "[%X{correlationId:-}]"

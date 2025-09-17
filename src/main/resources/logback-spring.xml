@@ -1,8 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    
+    <!-- Include Spring Boot's logback extensions -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Define log path variable -->
+    <property name="LOG_PATH" value="log"/>
 
-    <!-- Console appender for development with structured JSON logging -->
+    <!-- Console appender with regular format -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p --- [%15.15t] %-40.40logger{39} [%X{correlationId:-}] : %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File appender for text format logs -->
+    <appender name="FILE_TEXT" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_PATH}/application.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId:-}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File appender for JSON format logs -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_PATH}/application-log-json.log</file>
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
             <providers>
                 <timestamp>
@@ -40,20 +62,8 @@
     <!-- Root logger -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE_TEXT"/>
+        <appender-ref ref="FILE_JSON"/>
     </root>
-
-    <!-- Application specific loggers -->
-    <logger name="com.cm.hellogithubactions" level="INFO"/>
-    <logger name="org.springframework.web" level="INFO"/>
-    <logger name="org.springframework.security" level="INFO"/>
-    <logger name="org.springframework.boot.actuate" level="INFO"/>
-
-    <!-- Reduce noise from common frameworks -->
-    <logger name="org.apache.catalina.startup.DigesterFactory" level="ERROR"/>
-    <logger name="org.apache.catalina.util.LifecycleBase" level="ERROR"/>
-    <logger name="org.apache.coyote.http11.Http11NioProtocol" level="WARN"/>
-    <logger name="org.apache.sshd.common.util.SecurityUtils" level="WARN"/>
-    <logger name="org.eclipse.jetty.util.component.AbstractLifeCycle" level="ERROR"/>
-    <logger name="org.hibernate.validator.internal.util.Version" level="WARN"/>
 
 </configuration>
