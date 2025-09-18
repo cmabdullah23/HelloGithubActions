@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Elasticsearch service
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch-local
+    environment:
+      # Single node cluster configuration
+      - discovery.type=single-node
+      - cluster.name=local-cluster
+      - node.name=local-node
+
+      # Memory settings
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+
+      # Disable security for local development (easier setup)
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+
+      # Performance settings for local dev
+      - bootstrap.memory_lock=true
+      - indices.query.bool.max_clause_count=10000
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+    volumes:
+      # Persist Elasticsearch data
+      - es_data:/usr/share/elasticsearch/data
+
+    ports:
+      - "9200:9200"     # REST API
+      - "9300:9300"     # Transport
+
+    networks:
+      - elastic
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana service (for viewing logs)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana-local
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana-local
+      - SERVER_HOST=0.0.0.0
+
+      # Disable security for local development
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
+
+    ports:
+      - "5601:5601"
+
+    networks:
+      - elastic
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  es_data:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
