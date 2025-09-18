@@ -5,7 +5,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
     <!-- Define log path variable -->
-    <property name="LOG_PATH" value="log"/>
+    <property name="LOG_PATH" value="logs"/>
 
     <!-- Console appender with regular format -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
