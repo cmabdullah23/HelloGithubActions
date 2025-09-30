@@ -82,17 +82,17 @@ tasks.register('dockerBuildLayered') {
         def snapshotDepsDir = new File(dockerDir, "${project.name}-${project.version}/snapshot-dependencies")
         def hasSnapshotDeps = snapshotDepsDir.exists() && snapshotDepsDir.listFiles()?.length > 0
         
-        def snapshotCopyLine = hasSnapshotDeps ? 
-            "COPY ${project.name}-${project.version}/snapshot-dependencies/BOOT-INF/lib/ BOOT-INF/lib/" : 
-            "# No snapshot dependencies to copy"
+//        def snapshotCopyLine = hasSnapshotDeps ?
+//            "COPY ${project.name}-${project.version}/snapshot-dependencies/ ./" :
+//            "# No snapshot dependencies to copy"
         
         dockerfile.text = """FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy layers in order of least to most frequently changing
-COPY ${project.name}-${project.version}/dependencies/BOOT-INF/lib/ BOOT-INF/lib/
+COPY ${project.name}-${project.version}/dependencies/ ./
 COPY ${project.name}-${project.version}/spring-boot-loader/ ./
-${snapshotCopyLine}
+COPY ${project.name}-${project.version}/snapshot-dependencies/ ./
 COPY ${project.name}-${project.version}/application/ ./
 
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
@@ -105,6 +105,7 @@ ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
 }
 
 // Task to build Docker image from prepared layers
+//${snapshotCopyLine}
 tasks.register('dockerBuildImage') {
     dependsOn('dockerBuildLayered')
     group = 'docker'

@@ -35,7 +35,8 @@ public class HealthController {
             response.put("correlationId", correlationId);
 
             logger.info("Health check completed successfully");
-            return ResponseEntity.ok(response);
+            throw new RuntimeException("FF");
+//            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             logger.error("Health check failed", e);
