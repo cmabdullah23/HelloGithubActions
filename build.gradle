@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.3'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.bmuschko.docker-remote-api' version '9.4.0'
 }
 
 group = 'com.cm'
@@ -36,4 +37,100 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Task to extract jar layers and create Dockerfile
+tasks.register('dockerBuildLayered') {
+    dependsOn('bootJar')
+    group = 'docker'
+    description = 'Extracts jar layers and creates Dockerfile for optimized Docker builds'
+    
+    doLast {
+        def dockerDir = layout.buildDirectory.dir('docker').get().asFile
+        def jarFile = layout.buildDirectory.file("libs/${project.name}-${project.version}.jar").get().asFile
+        
+        // Create docker directory
+        dockerDir.mkdirs()
+        
+        // Copy the jar file to build directory
+        copy {
+            from(jarFile)
+            into(dockerDir)
+        }
+        
+        // Clean up any existing extracted layers
+        delete("$dockerDir/${project.name}-${project.version}")
+        
+        // Extract jar layers using jarmode=tools
+        project.exec {
+            workingDir(dockerDir)
+            commandLine(
+                "${System.getProperty("java.home")}/bin/java",
+                "-Djarmode=tools",
+                "-jar",
+                "${project.name}-${project.version}.jar",
+                "extract",
+                "--layers",
+                "--launcher"
+            )
+        }
+        
+        // Create Dockerfile
+        def dockerfile = new File(dockerDir, 'Dockerfile')
+        
+        // Check if snapshot-dependencies has content
+        def snapshotDepsDir = new File(dockerDir, "${project.name}-${project.version}/snapshot-dependencies")
+        def hasSnapshotDeps = snapshotDepsDir.exists() && snapshotDepsDir.listFiles()?.length > 0
+        
+        def snapshotCopyLine = hasSnapshotDeps ? 
+            "COPY ${project.name}-${project.version}/snapshot-dependencies/BOOT-INF/lib/ BOOT-INF/lib/" : 
+            "# No snapshot dependencies to copy"
+        
+        dockerfile.text = """FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# Copy layers in order of least to most frequently changing
+COPY ${project.name}-${project.version}/dependencies/BOOT-INF/lib/ BOOT-INF/lib/
+COPY ${project.name}-${project.version}/spring-boot-loader/ ./
+${snapshotCopyLine}
+COPY ${project.name}-${project.version}/application/ ./
+
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+"""
+        
+        println "✅ Docker layers extracted and Dockerfile created"
+        println "   Build context: ${dockerDir.absolutePath}"
+        println "   Next step: Run './gradlew dockerBuildImage' to build the Docker image"
+    }
+}
+
+// Task to build Docker image from prepared layers
+tasks.register('dockerBuildImage') {
+    dependsOn('dockerBuildLayered')
+    group = 'docker'
+    description = 'Builds Docker image from extracted layers'
+    
+    doLast {
+        def dockerDir = layout.buildDirectory.dir('docker').get().asFile
+        def imageName = "cmabdullah21/${project.name.toLowerCase()}:${project.version}"
+        def latestImageName = "cmabdullah21/${project.name.toLowerCase()}:latest"
+        
+        // Verify build context exists
+        if (!dockerDir.exists() || !new File(dockerDir, 'Dockerfile').exists()) {
+            throw new GradleException("Docker build context not found. Run 'dockerBuildLayered' first.")
+        }
+        
+        println "Building Docker image: ${imageName}"
+        project.exec {
+            workingDir(dockerDir)
+            commandLine('docker', 'build', '-t', imageName, '-t', latestImageName, '.')
+        }
+        
+        println "✅ Docker image built successfully!"
+        println "   Image: ${imageName}"
+        println "   Latest: ${latestImageName}"
+        println ""
+        println "To run the container:"
+        println "docker run -p 8080:8080 ${imageName}"
+    }
 }
