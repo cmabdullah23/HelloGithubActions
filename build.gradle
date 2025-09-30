@@ -74,6 +74,18 @@ tasks.register('dockerBuildLayered') {
                 "--launcher"
             )
         }
+
+        // List extracted contents
+        project.exec {
+            workingDir(new File(dockerDir, "${project.name}-${project.version}"))
+            commandLine("ls", "-la")
+        }
+        
+        // Show directory tree structure
+        project.exec {
+            workingDir(new File(dockerDir, "${project.name}-${project.version}"))
+            commandLine("tree")
+        }
         
         // Create Dockerfile
         def dockerfile = new File(dockerDir, 'Dockerfile')
