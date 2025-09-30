@@ -113,8 +113,8 @@ tasks.register('dockerBuildImage') {
     
     doLast {
         def dockerDir = layout.buildDirectory.dir('docker').get().asFile
-        def imageName = "cmabdullah21/${project.name.toLowerCase()}:${project.version}"
-        def latestImageName = "cmabdullah21/${project.name.toLowerCase()}:latest"
+        def imageName = "abdullahkhan25/${project.name.toLowerCase()}:${project.version}"
+        def latestImageName = "abdullahkhan25/${project.name.toLowerCase()}:latest"
         
         // Verify build context exists
         if (!dockerDir.exists() || !new File(dockerDir, 'Dockerfile').exists()) {
