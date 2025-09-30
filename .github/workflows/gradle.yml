@@ -83,7 +83,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: cmabdullah21/hellogithubactions
+        images: abdullahkhan25/hellogithubactions
         tags: |
           type=ref,event=branch
           type=ref,event=pr
