@@ -79,9 +79,9 @@ tasks.register('dockerBuildLayered') {
         def dockerfile = new File(dockerDir, 'Dockerfile')
         
         // Check if snapshot-dependencies has content
-        def snapshotDepsDir = new File(dockerDir, "${project.name}-${project.version}/snapshot-dependencies")
-        def hasSnapshotDeps = snapshotDepsDir.exists() && snapshotDepsDir.listFiles()?.length > 0
-        
+//        def snapshotDepsDir = new File(dockerDir, "${project.name}-${project.version}/snapshot-dependencies")
+//        def hasSnapshotDeps = snapshotDepsDir.exists() && snapshotDepsDir.listFiles()?.length > 0
+//
 //        def snapshotCopyLine = hasSnapshotDeps ?
 //            "COPY ${project.name}-${project.version}/snapshot-dependencies/ ./" :
 //            "# No snapshot dependencies to copy"
